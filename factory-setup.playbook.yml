@@ -20,12 +20,6 @@
         - apache2
       notify: start apache2
 
-    - name: jenkins is kvm member
-      user:
-        name=jenkins
-        groups=kvm
-        append=yes
-
     - name: common aliases
       copy:
         dest=/etc/profile.d/aliases.sh
