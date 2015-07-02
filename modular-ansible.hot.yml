@@ -52,6 +52,7 @@ resources:
         - { get_resource: sg }
       user_data_format: RAW
       user_data:
+        str_replace:
           template: |
             #!/bin/bash
             apt-get update
@@ -62,7 +63,7 @@ resources:
             echo "[local]" > /etc/ansible/hosts
             echo "127.0.0.1 ansible_connection=local" >> /etc/ansible/hosts
             curl -f $playbook_url -o "factory-setup.playbook.yml"
-            /usr/local/bin/ansible-playbook /root/image-factory/factory-setup/factory-setup.playbook.yml -vvv > /root/setup-factory.playbook.log 2>&1
+            /usr/local/bin/ansible-playbook /root/factory-setup.playbook.yml -vvv > /root/setup-factory.playbook.log 2>&1
           params:
             $playbook_url: { get_param: PlaybookURL }
 
