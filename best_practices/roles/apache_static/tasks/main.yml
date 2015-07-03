@@ -1,0 +1,23 @@
+---
+- name: packages installed
+  apt:
+    pkg="{{ item }}"
+    state=present
+  with_items:
+    - apache2
+    - php5
+    - libapache2-mod-php5
+
+- name: apache running
+  service:
+    name=apache2
+    state=running
+    enabled=yes
+
+- name: move default apache site
+  shell: mv /var/www/html /var/www/default
+
+- name: deploy
+  git:
+    repo="{{ apache_static.git_url }}"
+    dest=/var/www/html
