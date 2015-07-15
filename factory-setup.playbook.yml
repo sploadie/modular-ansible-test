@@ -21,10 +21,14 @@
         - php5
         - libapache2-mod-php5
 
-    - name: apache running
+    - name: apache started
       service:
         name=apache2
-        state=running
+        state=started
+
+    - name: apache enabled
+      service:
+        name=apache2
         enabled=yes
 
     - name: move default apache site
