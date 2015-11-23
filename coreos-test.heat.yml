@@ -1,0 +1,98 @@
+heat_template_version: 2013-05-23
+
+description: Just an image with an IP
+
+parameters:
+  keypair_name:
+    default: boat-comp
+    description: Keypair to inject in instances
+    type: string
+
+  token:
+    description: https://discovery.etcd.io/new?size=1
+    type: string
+
+resources:
+  network:
+    type: OS::Neutron::Net
+
+  subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: network }
+      ip_version: 4
+      cidr: 10.42.42.0/24
+      allocation_pools:
+        - { start: 10.42.42.100, end: 10.42.42.199 }
+
+  security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      rules:
+        - { direction: ingress, protocol: TCP, port_range_min: 22, port_range_max: 22 }
+        - { direction: ingress, protocol: TCP, port_range_min: 4001, port_range_max: 4001 }
+        - { direction: ingress, protocol: TCP, port_range_min: 2379, port_range_max: 2379 }
+        - { direction: ingress, protocol: TCP, port_range_min: 2380, port_range_max: 2380 }
+        - { direction: egress, protocol: ICMP }
+        - { direction: egress, protocol: TCP }
+        - { direction: egress, protocol: UDP }
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+
+  floating_ip_link:
+    type: OS::Nova::FloatingIPAssociation
+    properties:
+      floating_ip: { get_resource: floating_ip }
+      server_id: { get_resource: server }
+
+  server:
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: keypair_name }
+      image: e5baffb1-f197-4fa2-b737-4bf66228391d
+      flavor: s1.cw.small-1
+      networks:
+        - { network: { get_resource: network } }
+      security_groups:
+        - { get_resource: security_group }
+      user_data_format: RAW
+      user_data:
+        get_resource: cloud_config
+
+  cloud_config:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        coreos:
+          etcd2:
+            # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
+            # specify the initial size of your cluster with ?size=X
+            discovery:
+              str_replace:
+                template: https://discovery.etcd.io/$token
+                params:
+                  $token: { get_param: token }
+            # multi-region and multi-cloud deployments need to use $public_ipv4
+            advertise-client-urls: http://$private_ipv4:2379,http://$private_ipv4:4001
+            initial-advertise-peer-urls: http://$private_ipv4:2380
+            # listen on both the official ports and the legacy ports
+            # legacy ports can be omitted if your application doesn't depend on them
+            listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+            listen-peer-urls: http://$private_ipv4:2380
+          units:
+            - name: etcd2.service
+              command: start
+            - name: fleet.service
+              command: start
+
+outputs:
+  floating_ip:
+    description: Floating IP
+    value:
+      str_replace:
+        template: $floating_ip
+        params:
+          $floating_ip: { get_attr: [floating_ip, floating_ip_address] }

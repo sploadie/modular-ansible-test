@@ -56,13 +56,17 @@ resources:
             apt-get install apache2 -y
             service apache2 start
 
-  factory_internet_surface:
+  floating_ip_link:
     type: OS::Nova::FloatingIPAssociation
     properties:
       floating_ip: { get_resource: ip }
       server_id: { get_resource: server }
 
 outputs:
-  floating_ip:
-    description: IP address of the deployed compute instance
-    value: { get_attr: [ip, floating_ip_address] }
+  floating_ip_url:
+    description: Stack URL
+    value:
+      str_replace:
+        template: http://$floating_ip/
+        params:
+          $floating_ip: { get_attr: [floating_ip, floating_ip_address] }
